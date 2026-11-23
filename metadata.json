@@ -1,0 +1,6 @@
+{
+  "name": "Taquilla Espresso",
+  "description": "Sistema web de venta de boletos, gestión de cartelera y emisión de boletos en PDF.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

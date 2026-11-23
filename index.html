@@ -1,0 +1,453 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Taquilla Espresso — Venta de Boletos y Cartelera</title>
+    <meta
+      name="description"
+      content="Sistema web de venta de boletos, gestión de cartelera y emisión de boletos en PDF."
+    />
+    <meta property="og:title" content="Taquilla Espresso — Venta de Boletos y Cartelera" />
+    <meta
+      property="og:description"
+      content="Sistema web de venta de boletos, gestión de cartelera y emisión de boletos en PDF."
+    />
+    <meta property="og:type" content="website" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@500;600&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <div class="topbar-inner">
+        <a href="#cartelera" class="brand" id="brand-link">Taquilla Espresso</a>
+
+        <nav class="nav-links" aria-label="Navegación principal">
+          <button type="button" class="nav-link active" data-view="cartelera" id="nav-cartelera">
+            Cartelera
+          </button>
+          <button type="button" class="nav-link" data-view="mis-boletos" id="nav-mis-boletos">
+            Mis Boletos
+          </button>
+          <button type="button" class="nav-link hidden" data-view="admin" id="nav-admin">
+            Panel Admin
+          </button>
+        </nav>
+
+        <div class="topbar-actions" id="topbar-actions">
+          <span class="user-greeting hidden" id="user-greeting"></span>
+          <button type="button" class="btn btn-primary" id="btn-open-auth">
+            Iniciar sesión
+          </button>
+          <button type="button" class="btn btn-secondary hidden" id="btn-logout">
+            Cerrar sesión
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <main class="main-container">
+      <!-- VISTA: CARTELERA -->
+      <section id="view-cartelera" class="view-section">
+        <div class="section-header">
+          <div class="section-heading-group">
+            <h1>Cartelera de Eventos</h1>
+            <p class="section-subtitle">
+              Elige tu función, selecciona el horario de preferencia y descarga tu boleto oficial en PDF al instante.
+            </p>
+          </div>
+
+          <div class="toolbar-controls">
+            <div class="search-field">
+              <input
+                type="text"
+                id="search-eventos"
+                class="input-control no-pipe"
+                placeholder="Buscar evento o recinto..."
+                aria-label="Buscar evento o recinto"
+                autocomplete="off"
+              />
+            </div>
+            <div class="segmented-filter" role="group" aria-label="Filtrar disponibilidad">
+              <button type="button" class="segment-btn active" data-filter="todos" id="filter-todos">
+                Todos
+              </button>
+              <button type="button" class="segment-btn" data-filter="disponibles" id="filter-disponibles">
+                Disponibles
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div id="eventos-grid" class="eventos-grid" aria-live="polite"></div>
+      </section>
+
+      <!-- VISTA: MIS BOLETOS -->
+      <section id="view-mis-boletos" class="view-section hidden">
+        <div class="section-header">
+          <div class="section-heading-group">
+            <h1>Mis Boletos</h1>
+            <p class="section-subtitle">
+              Consulta tus accesos confirmados y vuelve a descargar el comprobante PDF cuando lo necesites.
+            </p>
+          </div>
+          <div class="toolbar-controls">
+            <button type="button" class="btn btn-secondary" id="btn-refresh-boletos">
+              Actualizar lista
+            </button>
+          </div>
+        </div>
+
+        <div id="mis-boletos-container"></div>
+      </section>
+
+      <!-- VISTA: PANEL ADMINISTRADOR -->
+      <section id="view-admin" class="view-section hidden">
+        <div class="section-header">
+          <div class="section-heading-group">
+            <h1>Panel de Administrador</h1>
+            <p class="section-subtitle">
+              Publica nuevos eventos con horarios y supervisa los ingresos totales por venta de boletos.
+            </p>
+          </div>
+          <div class="toolbar-controls">
+            <button type="button" class="btn btn-secondary" id="btn-refresh-admin">
+              Actualizar reporte
+            </button>
+          </div>
+        </div>
+
+        <div class="kpi-strip" id="admin-kpis">
+          <article class="kpi-card">
+            <span class="kpi-label">Eventos en cartelera</span>
+            <strong class="kpi-value tabular-nums" id="kpi-eventos">0</strong>
+          </article>
+          <article class="kpi-card">
+            <span class="kpi-label">Boletos vendidos</span>
+            <strong class="kpi-value tabular-nums" id="kpi-boletos">0</strong>
+          </article>
+          <article class="kpi-card">
+            <span class="kpi-label">Total recaudado</span>
+            <strong class="kpi-value tabular-nums" id="kpi-recaudado">$0.00 MXN</strong>
+          </article>
+        </div>
+
+        <div class="admin-workspace">
+          <section class="panel-card" aria-labelledby="admin-form-title">
+            <h2 id="admin-form-title" class="panel-title">Registrar nuevo evento</h2>
+            <form id="form-admin-evento" class="stack-form" novalidate>
+              <div class="form-field">
+                <label for="ev-nombre">Nombre del evento</label>
+                <input
+                  type="text"
+                  id="ev-nombre"
+                  name="nombre"
+                  class="input-control no-pipe"
+                  placeholder="Ej. Festival de Jazz de Invierno"
+                  maxlength="100"
+                  required
+                />
+              </div>
+
+              <div class="form-field">
+                <label for="ev-lugar">Lugar / Recinto</label>
+                <input
+                  type="text"
+                  id="ev-lugar"
+                  name="lugar"
+                  class="input-control no-pipe"
+                  placeholder="Ej. Teatro Degollado"
+                  maxlength="100"
+                  required
+                />
+              </div>
+
+              <div class="form-row-2">
+                <div class="form-field">
+                  <label for="ev-fecha">Fecha del evento</label>
+                  <input
+                    type="date"
+                    id="ev-fecha"
+                    name="fecha"
+                    class="input-control"
+                    required
+                  />
+                </div>
+
+                <div class="form-field">
+                  <label for="ev-precio">Precio por boleto (MXN)</label>
+                  <input
+                    type="number"
+                    id="ev-precio"
+                    name="precio"
+                    class="input-control tabular-nums"
+                    placeholder="450.00"
+                    min="1"
+                    step="0.01"
+                    required
+                  />
+                </div>
+              </div>
+
+              <div class="form-row-2">
+                <div class="form-field">
+                  <label for="ev-horarios">Horarios (separados por coma)</label>
+                  <input
+                    type="text"
+                    id="ev-horarios"
+                    name="horarios"
+                    class="input-control no-pipe"
+                    placeholder="17:00, 19:30, 21:30"
+                    maxlength="120"
+                    required
+                  />
+                </div>
+
+                <div class="form-field">
+                  <label for="ev-disponibles">Boletos disponibles</label>
+                  <input
+                    type="number"
+                    id="ev-disponibles"
+                    name="disponibles"
+                    class="input-control tabular-nums"
+                    placeholder="100"
+                    min="1"
+                    step="1"
+                    required
+                  />
+                </div>
+              </div>
+
+              <p class="field-hint">
+                Nota: El carácter <code>|</code> no está permitido para mantener la integridad de los archivos de datos.
+              </p>
+
+              <button type="submit" class="btn btn-primary btn-full" id="btn-crear-evento">
+                Guardar evento en cartelera
+              </button>
+            </form>
+          </section>
+
+          <section class="panel-card" aria-labelledby="admin-sales-title">
+            <div class="panel-header-inline">
+              <h2 id="admin-sales-title" class="panel-title">Reporte de ventas</h2>
+              <input
+                type="text"
+                id="search-ventas"
+                class="input-control input-compact no-pipe"
+                placeholder="Filtrar por folio, evento o usuario..."
+                aria-label="Filtrar ventas"
+              />
+            </div>
+
+            <div class="table-wrapper">
+              <table class="sales-table">
+                <thead>
+                  <tr>
+                    <th>Folio</th>
+                    <th>Evento</th>
+                    <th>Horario</th>
+                    <th>Cliente</th>
+                    <th class="num-col">Cant.</th>
+                    <th class="num-col">Total</th>
+                    <th class="action-col">Boleto</th>
+                  </tr>
+                </thead>
+                <tbody id="admin-ventas-tbody"></tbody>
+              </table>
+            </div>
+          </section>
+        </div>
+      </section>
+    </main>
+
+    <!-- MODAL DE AUTENTICACIÓN -->
+    <div id="auth-modal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="auth-modal-title">
+      <div class="modal-card modal-auth">
+        <div class="modal-header">
+          <h2 id="auth-modal-title">Acceso a tu cuenta</h2>
+          <button type="button" class="modal-close" id="btn-close-auth" aria-label="Cerrar modal">
+            ×
+          </button>
+        </div>
+
+        <div class="auth-tabs" role="tablist">
+          <button type="button" class="auth-tab active" data-auth-tab="login" id="tab-login" role="tab" aria-selected="true">
+            Iniciar sesión
+          </button>
+          <button type="button" class="auth-tab" data-auth-tab="register" id="tab-register" role="tab" aria-selected="false">
+            Registrarse
+          </button>
+        </div>
+
+        <form id="form-login" class="stack-form" novalidate>
+          <div class="form-field">
+            <label for="login-username">Usuario</label>
+            <input
+              type="text"
+              id="login-username"
+              class="input-control no-pipe"
+              placeholder="Tu nombre de usuario"
+              autocomplete="username"
+              required
+            />
+          </div>
+          <div class="form-field">
+            <label for="login-password">Contraseña</label>
+            <input
+              type="password"
+              id="login-password"
+              class="input-control no-pipe"
+              placeholder="Tu contraseña"
+              autocomplete="current-password"
+              required
+            />
+          </div>
+          <button type="submit" class="btn btn-primary btn-full" id="btn-submit-login">
+            Entrar al sistema
+          </button>
+        </form>
+
+        <form id="form-register" class="stack-form hidden" novalidate>
+          <div class="form-field">
+            <label for="reg-username">Nombre de usuario</label>
+            <input
+              type="text"
+              id="reg-username"
+              class="input-control no-pipe"
+              placeholder="Sin espacios ni '|'"
+              autocomplete="username"
+              maxlength="40"
+              required
+            />
+          </div>
+          <div class="form-field">
+            <label for="reg-nombre">Nombre completo</label>
+            <input
+              type="text"
+              id="reg-nombre"
+              class="input-control no-pipe"
+              placeholder="Nombre como aparecerá en el boleto"
+              autocomplete="name"
+              maxlength="90"
+              required
+            />
+          </div>
+          <div class="form-field">
+            <label for="reg-password">Contraseña</label>
+            <input
+              type="password"
+              id="reg-password"
+              class="input-control no-pipe"
+              placeholder="Mínimo 4 caracteres"
+              autocomplete="new-password"
+              maxlength="120"
+              required
+            />
+          </div>
+          <button type="submit" class="btn btn-primary btn-full" id="btn-submit-register">
+            Crear cuenta
+          </button>
+        </form>
+      </div>
+    </div>
+
+    <!-- MODAL INTERACTIVO DE COMPRA -->
+    <div id="compra-modal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="compra-modal-title">
+      <div class="modal-card modal-compra">
+        <div class="modal-header">
+          <div>
+            <span class="modal-kicker" id="compra-evento-id"></span>
+            <h2 id="compra-modal-title">Comprar boletos</h2>
+          </div>
+          <button type="button" class="modal-close" id="btn-close-compra" aria-label="Cerrar modal">
+            ×
+          </button>
+        </div>
+
+        <div id="compra-step-form">
+          <div class="compra-event-summary">
+            <h3 id="compra-evento-nombre"></h3>
+            <p class="compra-meta" id="compra-evento-meta"></p>
+          </div>
+
+          <div class="form-field">
+            <span class="field-label">Horario seleccionado</span>
+            <div class="horarios-group" id="compra-horarios-list"></div>
+          </div>
+
+          <div class="compra-qty-row">
+            <div class="form-field">
+              <label for="compra-cantidad">Cantidad de boletos</label>
+              <div class="qty-stepper">
+                <button type="button" class="stepper-btn" id="btn-qty-minus" aria-label="Disminuir cantidad">
+                  −
+                </button>
+                <input
+                  type="number"
+                  id="compra-cantidad"
+                  class="qty-input tabular-nums"
+                  min="1"
+                  value="1"
+                />
+                <button type="button" class="stepper-btn" id="btn-qty-plus" aria-label="Aumentar cantidad">
+                  +
+                </button>
+              </div>
+            </div>
+
+            <div class="compra-price-box">
+              <span class="price-caption">Disponibles</span>
+              <strong class="tabular-nums" id="compra-disponibles">0</strong>
+            </div>
+          </div>
+
+          <div class="compra-total-panel">
+            <div class="total-line">
+              <span id="compra-desglose">1 × $0.00 MXN</span>
+              <span class="total-label">Total a pagar</span>
+            </div>
+            <strong class="total-amount tabular-nums" id="compra-total">$0.00 MXN</strong>
+          </div>
+
+          <div class="modal-footer-actions">
+            <button type="button" class="btn btn-secondary" id="btn-cancel-compra">
+              Cancelar
+            </button>
+            <button type="button" class="btn btn-primary" id="btn-confirm-compra">
+              Confirmar compra
+            </button>
+          </div>
+        </div>
+
+        <div id="compra-step-success" class="hidden">
+          <div class="success-banner">
+            <span class="success-tag">Compra confirmada</span>
+            <p class="success-folio tabular-nums" id="success-folio"></p>
+          </div>
+
+          <dl class="receipt-list" id="success-receipt-details"></dl>
+
+          <div class="modal-footer-actions">
+            <button type="button" class="btn btn-secondary" id="btn-go-mis-boletos">
+              Ir a Mis Boletos
+            </button>
+            <button type="button" class="btn btn-primary" id="btn-download-new-pdf">
+              Descargar Boleto PDF
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="toast-container" class="toast-container" aria-live="polite" aria-atomic="true"></div>
+
+    <script type="module" src="/app.js"></script>
+  </body>
+</html>

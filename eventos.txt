@@ -1,0 +1,2 @@
+EVT-101|Concierto Filarmónica Nocturna|Auditorio Telmex|2026-12-05|18:00;21:00|650.00|120
+EVT-102|Obra de Teatro: El Último Acto|Teatro Diana|2026-12-12|16:30;19:30;21:30|420.00|80

@@ -1,0 +1,5 @@
+node_modules
+dist
+boletos_pdf
+*.txt
+.env
