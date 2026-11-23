@@ -5,6 +5,7 @@ import json
 import os
 import re
 import secrets
+import shutil
 import threading
 import time
 import uuid
@@ -28,15 +29,18 @@ except ImportError:
 # CONFIGURACIÓN DE ARCHIVOS Y CONSTANTES
 # ==========================================
 BASE_DIR = Path(__file__).resolve().parent
-ARCHIVO_USUARIOS = BASE_DIR / "usuarios.txt"
-ARCHIVO_EVENTOS = BASE_DIR / "eventos.txt"
-ARCHIVO_BOLETOS = BASE_DIR / "boletos.txt"
-CARPETA_PDF = BASE_DIR / "boletos_pdf"
+IS_VERCEL = bool(os.environ.get("VERCEL") or os.environ.get("VERCEL_ENV"))
+DATA_DIR = Path("/tmp/taquilla_data") if IS_VERCEL else BASE_DIR
+
+ARCHIVO_USUARIOS = DATA_DIR / "usuarios.txt"
+ARCHIVO_EVENTOS = DATA_DIR / "eventos.txt"
+ARCHIVO_BOLETOS = DATA_DIR / "boletos.txt"
+CARPETA_PDF = DATA_DIR / "boletos_pdf"
 SEPARADOR = "|"
 
 SESSION_COOKIE_NAME = "taquilla_session"
 SESSION_TTL_SECONDS = 60 * 60 * 8
-SESSION_SECRET = os.environ.get("SESSION_SECRET") or secrets.token_hex(32)
+SESSION_SECRET = os.environ.get("SESSION_SECRET", "taquilla-espresso-vercel-secret-2026")
 FOLIO_REGEX = re.compile(r"^[A-Za-z0-9_-]{1,32}$")
 FECHA_REGEX = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 
@@ -203,7 +207,15 @@ class RepositorioTxt:
     @staticmethod
     def inicializar() -> None:
         with _LOCK_ARCHIVOS:
-            CARPETA_PDF.mkdir(exist_ok=True)
+            DATA_DIR.mkdir(parents=True, exist_ok=True)
+            CARPETA_PDF.mkdir(parents=True, exist_ok=True)
+
+            if IS_VERCEL:
+                for nombre_archivo in ("usuarios.txt", "eventos.txt", "boletos.txt"):
+                    origen = BASE_DIR / nombre_archivo
+                    destino = DATA_DIR / nombre_archivo
+                    if origen.exists() and not destino.exists():
+                        shutil.copy2(origen, destino)
 
             if not ARCHIVO_USUARIOS.exists():
                 admin_password = os.environ.get("ADMIN_INITIAL_PASSWORD", "admin123")
@@ -376,7 +388,7 @@ class GeneradorBoletoPDF:
         if not FPDF_DISPONIBLE:
             return None
 
-        CARPETA_PDF.mkdir(exist_ok=True)
+        CARPETA_PDF.mkdir(parents=True, exist_ok=True)
         pdf = FPDF(orientation="P", unit="mm", format="A4")
         pdf.add_page()
 
@@ -469,7 +481,7 @@ class GeneradorBoletoPDF:
 # ==========================================
 # APLICACIÓN WEB FLASK
 # ==========================================
-app = Flask(__name__, static_folder=".", static_url_path="")
+app = Flask(__name__, static_folder=str(BASE_DIR), static_url_path="")
 CORS(
     app,
     resources={
